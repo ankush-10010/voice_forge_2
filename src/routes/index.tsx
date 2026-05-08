@@ -38,6 +38,7 @@ function Index() {
   const [textPrompt, setTextPrompt] = useState("Hey man, this is Joe. We are cloning this voice directly from the cloud using Modal GPUs.");
   const [specId, setSpecId] = useState("");
   const [spectrogramImgUrl, setSpectrogramImgUrl] = useState("");
+  const [waveformImgUrl, setWaveformImgUrl] = useState("");
   const [outputAudioUrl, setOutputAudioUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
@@ -56,9 +57,25 @@ function Index() {
     return () => {
       if (referenceAudioUrl) URL.revokeObjectURL(referenceAudioUrl);
       if (spectrogramImgUrl) URL.revokeObjectURL(spectrogramImgUrl);
+      if (waveformImgUrl) URL.revokeObjectURL(waveformImgUrl);
       if (outputAudioUrl) URL.revokeObjectURL(outputAudioUrl);
     };
-  }, [outputAudioUrl, referenceAudioUrl, spectrogramImgUrl]);
+  }, [outputAudioUrl, referenceAudioUrl, spectrogramImgUrl, waveformImgUrl]);
+
+  const b64toBlob = (b64Data: string, contentType='', sliceSize=512) => {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, {type: contentType});
+  }
 
   const runRequest = async (status: string, request: () => Promise<void>) => {
     setIsLoading(true);
@@ -119,11 +136,19 @@ function Index() {
     if (!nextSpecId) throw new Error("The backend did not return a spec_id.");
     setSpecId(nextSpecId);
 
-    const imageResponse = await fetch(`${SPECTROGRAM_IMAGE_URL}/${nextSpecId}`);
-    await ensureOk(imageResponse, "Unable to fetch the spectrogram image.");
-    const imageBlob = await imageResponse.blob();
-    if (spectrogramImgUrl) URL.revokeObjectURL(spectrogramImgUrl);
-    setSpectrogramImgUrl(URL.createObjectURL(imageBlob));
+    // FIX: Use the base64 image returned directly from the synthesis request 
+    // to avoid 404 errors in multi-container Modal environments.
+    if (data.spec_img_base64) {
+      if (spectrogramImgUrl) URL.revokeObjectURL(spectrogramImgUrl);
+      setSpectrogramImgUrl(`data:image/png;base64,${data.spec_img_base64}`);
+    } else {
+      // Fallback to legacy behavior if backend hasn't been updated
+      const imageResponse = await fetch(`${SPECTROGRAM_IMAGE_URL}/spectrogram_image/${nextSpecId}`);
+      await ensureOk(imageResponse, "Unable to fetch the spectrogram image.");
+      const imageBlob = await imageResponse.blob();
+      if (spectrogramImgUrl) URL.revokeObjectURL(spectrogramImgUrl);
+      setSpectrogramImgUrl(URL.createObjectURL(imageBlob));
+    }
   });
 
   const vocodeAudio = () => runRequest("Running vocoder on generated spectrogram…", async () => {
@@ -133,9 +158,17 @@ function Index() {
       body: JSON.stringify({ spec_id: specId }),
     });
     await ensureOk(response, "Unable to vocode audio from this spectrogram.");
-    const audioBlob = await response.blob();
-    if (outputAudioUrl) URL.revokeObjectURL(outputAudioUrl);
-    setOutputAudioUrl(URL.createObjectURL(audioBlob));
+    const data = await response.json();
+    
+    if (data.audio_base64) {
+      const audioBlob = b64toBlob(data.audio_base64, 'audio/wav');
+      if (outputAudioUrl) URL.revokeObjectURL(outputAudioUrl);
+      setOutputAudioUrl(URL.createObjectURL(audioBlob));
+    }
+    if (data.waveform_img_base64) {
+      if (waveformImgUrl) URL.revokeObjectURL(waveformImgUrl);
+      setWaveformImgUrl(`data:image/png;base64,${data.waveform_img_base64}`);
+    }
   });
 
   const generateAudio = () => runRequest("Generating cloned waveform in one pass…", async () => {
@@ -146,9 +179,21 @@ function Index() {
       body: JSON.stringify({ text: textPrompt, embed: embedding }),
     });
     await ensureOk(response, "Unable to generate cloned audio.");
-    const audioBlob = await response.blob();
-    if (outputAudioUrl) URL.revokeObjectURL(outputAudioUrl);
-    setOutputAudioUrl(URL.createObjectURL(audioBlob));
+    const data = await response.json();
+    
+    if (data.audio_base64) {
+      const audioBlob = b64toBlob(data.audio_base64, 'audio/wav');
+      if (outputAudioUrl) URL.revokeObjectURL(outputAudioUrl);
+      setOutputAudioUrl(URL.createObjectURL(audioBlob));
+    }
+    if (data.waveform_img_base64) {
+      if (waveformImgUrl) URL.revokeObjectURL(waveformImgUrl);
+      setWaveformImgUrl(`data:image/png;base64,${data.waveform_img_base64}`);
+    }
+    if (data.spec_img_base64) {
+      if (spectrogramImgUrl) URL.revokeObjectURL(spectrogramImgUrl);
+      setSpectrogramImgUrl(`data:image/png;base64,${data.spec_img_base64}`);
+    }
   });
 
   return (
@@ -257,6 +302,9 @@ function Index() {
               <span className="mb-3 block text-sm font-semibold text-panel-foreground">Output audio</span>
               {outputAudioUrl ? (
                 <div className="flex flex-col gap-3">
+                  {waveformImgUrl && (
+                    <img src={waveformImgUrl} alt="Generated Audio Waveform" className="h-32 w-full rounded-md object-cover border border-border/50 shadow-inner" />
+                  )}
                   <audio className="w-full" controls src={outputAudioUrl} />
                   <a className="inline-flex h-10 items-center justify-center rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:scale-[1.01]" href={outputAudioUrl} download="cloned-voice.wav">
                     Download WAV
