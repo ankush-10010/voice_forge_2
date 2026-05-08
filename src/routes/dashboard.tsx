@@ -241,7 +241,7 @@ function Index() {
             <ActionButton onClick={loadModels} disabled={modelsLoaded || isLoading} tone="primary">
               {modelsLoaded ? "Models Loaded" : "Load Models"}
             </ActionButton>
-            <EndpointLabel value={LOAD_MODELS_URL} />
+
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-panel-foreground">Reference audio</span>
               <input
@@ -255,7 +255,7 @@ function Index() {
             <ActionButton onClick={extractEmbedding} disabled={!modelsLoaded || !referenceAudio || isLoading}>
               Extract Embedding
             </ActionButton>
-            <EndpointLabel value={EXTRACT_EMBEDDING_URL} />
+
             <Metric label="Embedding vector" value={embeddingReady ? `${embedding?.length ?? 0} floats` : "Not extracted"} />
           </Panel>
 
@@ -273,15 +273,15 @@ function Index() {
             <ActionButton onClick={generateSpectrogram} disabled={!embeddingReady || !textPrompt.trim() || isLoading}>
               Generate Spectrogram
             </ActionButton>
-            <EndpointLabel value={SYNTHESIZE_SPECTROGRAM_URL} />
+
             <ActionButton onClick={vocodeAudio} disabled={!specId || isLoading}>
               Vocode Audio
             </ActionButton>
-            <EndpointLabel value={VOCODE_AUDIO_URL} />
+
             <ActionButton onClick={generateAudio} disabled={!embeddingReady || !textPrompt.trim() || isLoading} tone="highlight">
               Generate Audio · All-in-One
             </ActionButton>
-            <EndpointLabel value={GENERATE_AUDIO_URL} />
+
           </Panel>
 
           <Panel title="03 · Visualizer & Output" delay="180ms">
@@ -294,7 +294,7 @@ function Index() {
                 <img src={spectrogramImgUrl} alt="Generated Mel spectrogram" className="h-56 w-full rounded-md object-cover" />
               ) : (
                 <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-border bg-muted/50 text-center text-sm text-muted-foreground">
-                  Spectrogram image appears after calling {SPECTROGRAM_IMAGE_URL}/&#123;spec_id&#125;
+                    spectrogram image and the audio waveform will appear here
                 </div>
               )}
             </div>
@@ -345,9 +345,7 @@ function ActionButton({ children, disabled, onClick, tone = "default" }: { child
   );
 }
 
-function EndpointLabel({ value }: { value: string }) {
-  return <p className="-mt-2 break-all rounded-md bg-muted px-2 py-1 font-mono text-[11px] leading-4 text-muted-foreground">{value}</p>;
-}
+
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
