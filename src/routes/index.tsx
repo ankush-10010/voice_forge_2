@@ -73,8 +73,7 @@ function Landing() {
                 </span>
               </div>
               <div className="space-y-3 font-mono text-xs">
-                <Row k="GPU" v="A100 · 80GB" />
-                <Row k="Latency" v="~120ms" />
+                <Row k="GPU" v="T4 · 80GB" />
                 <Row k="Sample Rate" v="22.05 kHz" />
                 <Row k="Embed Dim" v="256 floats" />
                 <Row k="Backend" v="Modal · PyTorch" />
