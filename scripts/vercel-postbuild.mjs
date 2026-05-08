@@ -2,7 +2,7 @@
 // The Lovable TanStack template targets Cloudflare Workers; for Vercel we
 // deploy the client bundle as a single-page app and let TanStack Router
 // handle routing on the client.
-import { readdirSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { readdirSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const clientDir = resolve("dist/client");
@@ -14,11 +14,13 @@ if (!existsSync(assetsDir)) {
 }
 
 const files = readdirSync(assetsDir);
-const mainJs = files.find((f) => /^main-.*\.js$/.test(f));
+// The entry point is the largest index-*.js file since it bundles the framework (React, Router, etc)
+const indexJsFiles = files.filter((f) => /^index-.*\.js$/.test(f));
+const mainJs = indexJsFiles.sort((a, b) => statSync(join(assetsDir, b)).size - statSync(join(assetsDir, a)).size)[0];
 const stylesCss = files.find((f) => /^styles-.*\.css$/.test(f));
 
 if (!mainJs) {
-  console.error("[vercel-postbuild] Could not find main-*.js entry in dist/client/assets");
+  console.error("[vercel-postbuild] Could not find index-*.js entry in dist/client/assets");
   process.exit(1);
 }
 
