@@ -69,6 +69,7 @@
   --color-wave: var(--wave);
   --color-wave-foreground: var(--wave-foreground);
   --color-surface-glow: var(--surface-glow);
+  --color-on-surface-variant: var(--on-surface-variant);
   --shadow-panel: var(--shadow-panel);
   --shadow-action: var(--shadow-action);
 }
