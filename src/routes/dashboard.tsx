@@ -9,7 +9,7 @@ import {
   VOCODE_AUDIO_URL,
 } from "../backend";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/dashboard")({
   component: Index,
 });
 
